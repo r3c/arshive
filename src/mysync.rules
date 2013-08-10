@@ -1,0 +1,8 @@
+# Name		Time	Keep	Executed command
+
+# Special token '{}' will be replaced by target archive path in your command,
+# which must output to this file
+
+# This is a demo rule, that auto-save current working directory every hour,
+# and keep up to three hours of backups
+sample		3600	10800	tar -czf {} *
