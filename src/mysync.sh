@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh -e
 
 # Read configuration file and verify settings
 config=`dirname "$0"`'/mysync.conf'
@@ -107,7 +107,7 @@ for rules in $sources; do
 
 			# Execute backup command
 			command=`echo "$exec" | sed "s:{}:$file:"`
-			sh -c "$command" 1> "$stdout" 2> "$stderr"
+			sh -c "$command" < /dev/null 1> "$stdout" 2> "$stderr"
 
 			code="$?"
 			err=0
