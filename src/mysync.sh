@@ -11,12 +11,12 @@ fi
 
 . "$config"
 
-if [ ! -n "$logerr" ]; then
-	echo >&2 "error: no error log path defined in configuration file"
+filemode=${filemode:-644}
+logerr=${logerr:-mysync.log.err}
+logout=${logout:-mysync.log.out}
 
-	exit 1
-elif [ ! -n "$logout" ]; then
-	echo >&2 "error: no output log path defined in configuration file"
+if ! echo "$filemode" | grep -qE '^[0-7]{3}$'; then
+	echo >&2 "error: invalid file mode in configuration file"
 
 	exit 1
 elif [ ! -n "$sources" ]; then
@@ -134,11 +134,11 @@ for rules in $sources; do
 
 			if ! [ -r "$file" ]; then
 				echo >&2 "error: $name: command didn't create expected backup archive"
-
-				continue
+			elif ! chmod "$filemode" "$file"; then
+				echo >&2 "error: $name: couldn't change file mode on archive"
+			else
+				echo "$name: saved as '$file'"
 			fi
-
-			echo "$name: saved"
 		fi
 	done
 done
