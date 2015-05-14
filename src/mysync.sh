@@ -45,6 +45,10 @@ for rules in $sources; do
 	cat "$rules" | while read rule; do
 		i=$((i + 1))
 
+		if echo "$rule" | grep -Eq '^(#|$)'; then
+			continue
+		fi
+
 		name=`echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p'`
 		rule=`echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p'`
 		time=`echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p'`
@@ -53,21 +57,19 @@ for rules in $sources; do
 		rule=`echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p'`
 		exec=`echo "$rule" | sed -nr 's/^[[:blank:]]*(.*)$/\1/p'`
 
-		if [ -z "$name" -o "$name" = "#" ]; then
-			continue
-		elif [ -z "`echo \"$name\" | grep -E '^[-0-9A-Za-z_.]+$'`" ]; then
+		if ! echo "$name" | grep -Eq '^[-0-9A-Za-z_.]+$'; then
 			echo >&2 "error: invalid or undefined name at line $i ($name)"
 
 			continue
-		elif [ -z "`echo \"$time\" | grep -E '^[0-9]+$'`" ]; then
+		elif ! echo "$time" | grep -Eq '^[0-9]+$'; then
 			echo >&2 "error: time is not an integer at line $i ($time)"
 
 			continue
-		elif [ -z "`echo \"$keep\" | grep -E '^[0-9]+$'`" ]; then
+		elif ! echo "$keep" | grep -Eq '^[0-9]+$'; then
 			echo >&2 "error: keep is not an integer at line $i ($time)"
 
 			continue
-		elif [ -z "`echo \"$exec\" | grep -E '{}'`" ]; then
+		elif ! echo "$exec" | grep -Eq '{}'; then
 			echo >&2 "error: missing '{}' placeholder at line $i ($exec)"
 
 			continue
@@ -83,7 +85,7 @@ for rules in $sources; do
 			for file in "$target/$name."*; do
 				this="${file#$target/$name.}"
 
-				if [ -n "`echo \"$this\" | grep -E '^[0-9]+$'`" ]; then
+				if echo "$this" | grep -Eq '^[0-9]+$'; then
 					diff=$((now - this))
 
 					if [ "$keep" -lt "$diff" ]; then
@@ -106,20 +108,20 @@ for rules in $sources; do
 			rm -f "$file"
 
 			# Execute backup command
-			command=`echo "$exec" | sed "s:{}:$file:"`
+			command=$(echo "$exec" | sed "s:{}:$file:")
 			sh -c "$command" < /dev/null 1> "$stdout" 2> "$stderr"
 
 			code="$?"
 			err=0
 
-			if [ "`stat -c %s \"$stderr\"`" -ne 0 ]; then
+			if [ "$(stat -c %s "$stderr")" -ne 0 ]; then
 				echo "=== $name: "`date '+%Y-%m-%d %H:%M:%S'`": stderr ===" >> "$logerr"
 				cat "$stderr" >> "$logerr"
 
 				err=1
 			fi
 
-			if [ "`stat -c %s \"$stdout\"`" -ne 0 ]; then
+			if [ "$(stat -c %s "$stdout")" -ne 0 ]; then
 				echo "=== $name: "`date '+%Y-%m-%d %H:%M:%S'`": stdout ===" >> "$logout"
 				cat "$stdout" >> "$logout"
 			fi
