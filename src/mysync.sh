@@ -109,27 +109,21 @@ for rules in $sources; do
 
 			# Execute backup command
 			command=$(echo "$exec" | sed "s:{}:$file:")
-			sh -c "$command" < /dev/null 1> "$stdout" 2> "$stderr"
 
-			code="$?"
-			err=0
+			if ! sh -c "$command" < /dev/null 1> "$stdout" 2> "$stderr"; then
+				echo >&2 "error: $name: exit with error code, see logs for details"
+			fi
 
 			if [ "$(stat -c %s "$stderr")" -ne 0 ]; then
 				echo "=== $name: "`date '+%Y-%m-%d %H:%M:%S'`": stderr ===" >> "$logerr"
 				cat "$stderr" >> "$logerr"
 
-				err=1
+				echo >&2 "error: $name: got data on stderr, see logs for details"
 			fi
 
 			if [ "$(stat -c %s "$stdout")" -ne 0 ]; then
 				echo "=== $name: "`date '+%Y-%m-%d %H:%M:%S'`": stdout ===" >> "$logout"
 				cat "$stdout" >> "$logout"
-			fi
-
-			if [ "$code" -ne 0 ]; then
-				echo >&2 "error: $name: exit code $code, see logs for details"
-			elif [ "$err" -ne 0 ]; then
-				echo >&2 "error: $name: got data on stderr, see logs for details"
 			fi
 
 			if ! [ -r "$file" ]; then
