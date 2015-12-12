@@ -1,7 +1,8 @@
 #!/bin/sh -e
 
 # Read configuration file and verify settings
-config=`dirname "$0"`'/mysync.conf'
+basedir=$(dirname $(readlink -m "$0"))
+config="$basedir"/mysync.conf
 
 if [ ! -r "$config" ]; then
 	echo >&2 "error: missing or unreadable configuration file: '$config'"
@@ -12,8 +13,9 @@ fi
 . "$config"
 
 filemode=${filemode:-644}
-logerr=${logerr:-mysync.log.err}
-logout=${logout:-mysync.log.out}
+logerr=$(cd "$basedir" && readlink -m "${logerr:-/tmp/mysync.log.err}")
+logout=$(cd "$basedir" && readlink -m "${logout:-/tmp/mysync.log.out}")
+target=$(cd "$basedir" && readlink -m "$target")
 
 if ! echo "$filemode" | grep -qE '^[0-7]{3}$'; then
 	echo >&2 "error: invalid file mode in configuration file"
@@ -30,11 +32,13 @@ elif [ ! -d "$target" -o ! -w "$target" ]; then
 fi
 
 # Parse each rules file defined in "sources" setting
-stderr=`mktemp`
-stdout=`mktemp`
+stderr=$(mktemp)
+stdout=$(mktemp)
 
 for rules in $sources; do
-	if [ ! -r "$rules" ]; then
+	path=$(cd "$basedir" && readlink -m "$rules")
+
+	if [ ! -r "$path" ]; then
 		echo >&2 "error: missing or unreadable rules files: '$rules'"
 
 		continue
@@ -42,20 +46,20 @@ for rules in $sources; do
 
 	i=0
 
-	cat "$rules" | while read rule; do
+	cat "$path" | while read rule; do
 		i=$((i + 1))
 
 		if echo "$rule" | grep -Eq '^(#|$)'; then
 			continue
 		fi
 
-		name=`echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p'`
-		rule=`echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p'`
-		time=`echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p'`
-		rule=`echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p'`
-		keep=`echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p'`
-		rule=`echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p'`
-		exec=`echo "$rule" | sed -nr 's/^[[:blank:]]*(.*)$/\1/p'`
+		name=$(echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p')
+		rule=$(echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p')
+		time=$(echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p')
+		rule=$(echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p')
+		keep=$(echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p')
+		rule=$(echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p')
+		exec=$(echo "$rule" | sed -nr 's/^[[:blank:]]*(.*)$/\1/p')
 
 		if ! echo "$name" | grep -Eq '^[-0-9A-Za-z_.]+$'; then
 			echo >&2 "error: invalid or undefined name at line $i ($name)"
@@ -80,7 +84,7 @@ for rules in $sources; do
 		else
 			# Scan existing backups in target path
 			newest=-1
-			now=`date '+%s'`
+			now=$(date '+%s')
 
 			for file in "$target/$name."*; do
 				this="${file#$target/$name.}"
@@ -115,14 +119,14 @@ for rules in $sources; do
 			fi
 
 			if [ "$(stat -c %s "$stderr")" -ne 0 ]; then
-				echo "=== $name: "`date '+%Y-%m-%d %H:%M:%S'`": stderr ===" >> "$logerr"
+				echo "=== $name: "$(date '+%Y-%m-%d %H:%M:%S')": stderr ===" >> "$logerr"
 				cat "$stderr" >> "$logerr"
 
 				echo >&2 "error: $name: got data on stderr, see logs for details"
 			fi
 
 			if [ "$(stat -c %s "$stdout")" -ne 0 ]; then
-				echo "=== $name: "`date '+%Y-%m-%d %H:%M:%S'`": stdout ===" >> "$logout"
+				echo "=== $name: "$(date '+%Y-%m-%d %H:%M:%S')": stdout ===" >> "$logout"
 				cat "$stdout" >> "$logout"
 			fi
 
