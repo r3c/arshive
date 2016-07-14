@@ -4,17 +4,23 @@ basedir="$(dirname $(readlink -m "$0"))"
 
 # Command line options
 opt_config="$basedir"/mysync.conf
+opt_dryrun=
 opt_quiet=
 
-while getopts :c:hq opt; do
+while getopts :c:dhq opt; do
 	case "$opt" in
 		c)
 			opt_config="$(readlink -m "$OPTARG")"
 			;;
 
+		d)
+			opt_dryrun=1
+			;;
+
 		h)
 			echo >&2 "$(basename $0) [-c <path>] [-h] [-q]"
 			echo >&2 '  -c <path>: use specified configuration file'
+			echo >&2 '  -d: dry run, execute commands but do not write or delete backups'
 			echo >&2 '  -h: display help and exit'
 			echo >&2 '  -q: quiet mode'
 			exit
@@ -55,6 +61,7 @@ fi
 filemode="${filemode:-0644}"
 logerr="$(cd "$basedir" && readlink -m "${logerr:-/tmp/mysync.log.err}")"
 logout="$(cd "$basedir" && readlink -m "${logout:-/tmp/mysync.log.out}")"
+placeholder='{}'
 target="$(cd "$basedir" && readlink -m "$target")"
 
 if ! echo "$filemode" | grep -qE '^[0-7]{3,4}$'; then
@@ -73,43 +80,31 @@ stderr="$(mktemp)"
 stdout="$(mktemp)"
 
 for source in $(cd "$basedir" && echo $sources ); do
+	# Convert source path to absolute and check existence
+	source="$(cd "$basedir" && readlink -m "$source")"
+
 	if [ ! -r "$source" ]; then
-		echo >&2 "error: missing or unreadable rule file: '$source'"
+		echo >&2 "error: missing or unreadable rule file '$source'"
 		continue
 	fi
 
-	i=0
-
-	cat "$source" | while read rule; do
-		i=$((i + 1))
-
-		if echo "$rule" | grep -Eq '^(#|$)'; then
-			continue
-		fi
-
-		name="$(echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p')"
-		rule="$(echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p')"
-		time="$(echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p')"
-		rule="$(echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p')"
-		keep="$(echo "$rule" | sed -nr 's/^[[:blank:]]*([^[:blank:]]+).*$/\1/p')"
-		rule="$(echo "$rule" | sed -nr 's/^[[:blank:]]*[^[:blank:]]+(.*)$/\1/p')"
-		exec="$(echo "$rule" | sed -nr 's/^[[:blank:]]*(.*)$/\1/p')"
-
+	# Scan rules defined in current rule file
+	sed -r '/^(#|$)/d;s/[[:blank:]]+/ /g' "$source" |
+	while IFS=' ' read name time keep command; do
 		if ! echo "$name" | grep -Eq '^[-0-9A-Za-z_.]+$'; then
-			echo >&2 "error: invalid or undefined name at line $i ($name)"
+			echo >&2 "error: invalid name '$name' in file '$source'"
 			continue
 		elif ! echo "$time" | grep -Eq '^[0-9]+$'; then
-			echo >&2 "error: time is not an integer at line $i ($time)"
+			echo >&2 "error: time is not an integer for rule '$name' in file '$source'"
 			continue
 		elif ! echo "$keep" | grep -Eq '^[0-9]+$'; then
-			echo >&2 "error: keep is not an integer at line $i ($time)"
+			echo >&2 "error: keep is not an integer for rule '$name' in file '$source'"
 			continue
-		elif ! echo "$exec" | grep -Eq '{}'; then
-			echo >&2 "error: missing '{}' placeholder at line $i ($exec)"
+		elif ! echo "$command" | grep -Eq "$placeholder"; then
+			echo >&2 "error: missing '$placeholder' placeholder for rule '$name' in file '$source'"
 			continue
 		elif [ "$keep" -lt "$time" ]; then
-			echo >&2 "error: keep time lower than exec time at line $i"
-			continue
+			echo >&2 "warning: keep duration lower than backup interval for rule '$name' in file '$source'"
 		else
 			# Scan existing backups in target path
 			newest=-1
@@ -122,7 +117,9 @@ for source in $(cd "$basedir" && echo $sources ); do
 					diff="$((now - this))"
 
 					if [ "$keep" -lt "$diff" ]; then
-						rm -f "$file"
+						if [ -z "$opt_dryrun" ]; then
+							rm -f "$file"
+						fi
 					elif [ "$newest" -lt 0 -o "$newest" -gt "$diff" ]; then
 						newest="$diff"
 					fi
@@ -139,13 +136,15 @@ for source in $(cd "$basedir" && echo $sources ); do
 			fi
 
 			# Create a new backup
-			file="$target/$name.$now"
-			rm -f "$file"
+			if [ -n "$opt_dryrun" ]; then
+				file=/dev/null
+			else
+				file="$target/$name.$now"
+				rm -f "$file"
+			fi
 
 			# Execute backup command
-			command="$(echo "$exec" | sed "s:{}:$file:")"
-
-			if ! sh -c "$command" < /dev/null 1> "$stdout" 2> "$stderr"; then
+			if ! sh -c "$(echo "$command" | sed "s:$placeholder:$file:")" < /dev/null 1> "$stdout" 2> "$stderr"; then
 				echo >&2 "error: $name: exit with error code, see logs for details"
 			fi
 
@@ -161,10 +160,12 @@ for source in $(cd "$basedir" && echo $sources ); do
 				cat "$stdout" >> "$logout"
 			fi
 
-			if ! [ -r "$file" ]; then
-				echo >&2 "error: $name: command didn't create expected backup archive"
+			if [ -n "$opt_dryrun" ]; then
+				echo "$name: should be saved"
+			elif ! [ -r "$file" ]; then
+				echo >&2 "warning: $name: command didn't create backup file"
 			elif ! chmod "$filemode" "$file"; then
-				echo >&2 "error: $name: couldn't change file mode on archive"
+				echo >&2 "warning: $name: couldn't change backup file mode"
 			elif [ -z "$opt_quiet" ]; then
 				echo "$name: saved as '$file'"
 			fi
