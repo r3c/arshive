@@ -36,7 +36,13 @@ while getopts :c:hq opt; do
 	esac
 done
 
+# Fail if unknown command line arguments are found
 shift "$((OPTIND - 1))"
+
+if [ $# -gt 0 ]; then
+	echo >&2 "error: unrecognized command line arguments: '$@'"
+	exit 1
+fi
 
 # Read configuration file and verify settings
 if [ ! -r "$opt_config" ]; then
