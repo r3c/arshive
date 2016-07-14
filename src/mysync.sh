@@ -86,7 +86,7 @@ fi
 filemode="${filemode:-0644}"
 logerr="$(cd "$basedir" && readlink -m "${logerr:-/tmp/mysync.log.err}")"
 logout="$(cd "$basedir" && readlink -m "${logout:-/tmp/mysync.log.out}")"
-placeholder='{}'
+placeholder='\{([^{}]*)\}'
 target="$(cd "$basedir" && readlink -m "${target:-/tmp}")"
 
 if ! echo "$filemode" | grep -qE '^[0-7]{3,4}$'; then
@@ -123,7 +123,7 @@ for source in $(cd "$basedir" && echo $sources ); do
 		elif ! echo "$keep" | grep -Eq -- '^[0-9]+$'; then
 			log 3 "parameter 'keep' is not an integer for rule '$name' in file '$source'"
 		elif ! echo "$command" | grep -Eq -- "$placeholder"; then
-			log 3 "parameter 'command' is missing placeholder '$placeholder' for rule '$name' in file '$source'"
+			log 3 "parameter 'command' is missing placeholder for rule '$name' in file '$source'"
 		else
 			# Backward compatibility
 			if [ "$keep" -ge 3600 ]; then
@@ -135,14 +135,15 @@ for source in $(cd "$basedir" && echo $sources ); do
 			# Browse existing backups
 			create=
 			now="$(date +%s)"
+			suffix="$(echo "$command" | sed -nr -- "s:.*$placeholder.*:\\1:p")"
 
-			for file in $(find -- "$target" -maxdepth 1 -type f -name "$name.*" | sort -r); do
+			for file in $(find -- "$target" -maxdepth 1 -type f -name "$name.*$suffix" | sort -r); do
 				# Check is a new backup file is required
 				if [ -z "$create" ]; then
-					backup="${file#$target/$name.}"
+					backup="$(echo "${file#$target/$name.}" | sed -nr -- "s:^([0-9]+)$suffix\$:\\1:p")"
 
-					if echo "$backup" | grep -Eqv '^[0-9]+$'; then
-						log 2 "$name: file '$file' has an invalid name and will be ignored"
+					if [ -z "$backup" ]; then
+						log 2 "$name: file '$file' doesn't match current rule and will be ignored"
 					elif [ "$((now - backup))" -ge "$time" ]; then
 						create=1
 					else
@@ -159,7 +160,7 @@ for source in $(cd "$basedir" && echo $sources ); do
 				else
 					test -n "$opt_dryrun" || rm -f -- "$file"
 
-					log 0 "$name: backup file '$file' deleted"
+					log 1 "$name: old backup file '$file' deleted"
 				fi
 			done
 
@@ -168,13 +169,13 @@ for source in $(cd "$basedir" && echo $sources ); do
 
 			# Prepare new backup
 			if [ -z "$opt_dryrun" ]; then
-				file="$target/$name.$now"
+				file="$target/$name.$now$suffix"
 			else
 				file=/dev/null
 			fi
 
 			# Execute backup command
-			if ! sh -c "$(echo "$command" | sed "s:$placeholder:$file:")" < /dev/null 1> "$stdout" 2> "$stderr"; then
+			if ! sh -c "$(echo "$command" | sed -r "s:$placeholder:$file:")" < /dev/null 1> "$stdout" 2> "$stderr"; then
 				log 2 "$name: exited with error code, see logs for details"
 			fi
 
@@ -189,13 +190,13 @@ for source in $(cd "$basedir" && echo $sources ); do
 			fi
 
 			if [ -n "$opt_dryrun" ]; then
-				log 1 "$name: backup required"
+				log 1 "$name: new backup required"
 			elif ! [ -r "$file" ]; then
 				log 2 "$name: command didn't create backup file '$file'"
 			elif ! chmod -- "$filemode" "$file"; then
 				log 2 "$name: couldn't change mode of backup file '$file'"
 			else
-				log 1 "$name: backup file saved as '$file'"
+				log 1 "$name: new backup file saved as '$file'"
 			fi
 		fi
 	done

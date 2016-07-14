@@ -36,8 +36,11 @@ it couldn't execute your rule every hour otherwise), it will execute "tar"
 program to create hourly compressed backup archives of your /var/www folder
 and only keep the 3 last generated ones.
 
-You can add comments to configuration & rule files by starting any line with
-a '#' character.
+You can specify a file name suffix between the braces of special '{}' token,
+e.g. '{.tgz}' so that your backup files have a valid file extension. You can
+also add comments to configuration & rule files by starting any line with a
+sharp '#' character.
 
 Feel free to contact me for any question: github.com [at] mirari [dot] com.
+
 Remi
