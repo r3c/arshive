@@ -116,13 +116,13 @@ for source in $(cd "$basedir" && echo $sources ); do
 	# Scan rules defined in current rule file
 	sed -r '/^(#|$)/d;s/[[:blank:]]+/ /g' "$source" |
 	while IFS=' ' read name time keep command; do
-		if ! echo "$name" | grep -Eq '^[-0-9A-Za-z_.]+$'; then
+		if ! echo "$name" | grep -Eq -- '^[-0-9A-Za-z_.]+$'; then
 			log 3 "invalid name '$name' in file '$source'"
-		elif ! echo "$time" | grep -Eq '^[0-9]+$'; then
+		elif ! echo "$time" | grep -Eq -- '^[0-9]+$'; then
 			log 3 "parameter 'time' is not an integer for rule '$name' in file '$source'"
-		elif ! echo "$keep" | grep -Eq '^[0-9]+$'; then
+		elif ! echo "$keep" | grep -Eq -- '^[0-9]+$'; then
 			log 3 "parameter 'keep' is not an integer for rule '$name' in file '$source'"
-		elif ! echo "$command" | grep -Eq "$placeholder"; then
+		elif ! echo "$command" | grep -Eq -- "$placeholder"; then
 			log 3 "parameter 'command' is missing placeholder '$placeholder' for rule '$name' in file '$source'"
 		else
 			# Backward compatibility
@@ -157,7 +157,7 @@ for source in $(cd "$basedir" && echo $sources ); do
 				if [ "$keep" -gt 1 ]; then
 					keep="$((keep - 1))"
 				else
-					test -n "$opt_dryrun" || rm -f "$file"
+					test -n "$opt_dryrun" || rm -f -- "$file"
 
 					log 0 "$name: backup file '$file' deleted"
 				fi
@@ -192,7 +192,7 @@ for source in $(cd "$basedir" && echo $sources ); do
 				log 1 "$name: backup required"
 			elif ! [ -r "$file" ]; then
 				log 2 "$name: command didn't create backup file '$file'"
-			elif ! chmod "$filemode" "$file"; then
+			elif ! chmod -- "$filemode" "$file"; then
 				log 2 "$name: couldn't change mode of backup file '$file'"
 			else
 				log 1 "$name: backup file saved as '$file'"
