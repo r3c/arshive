@@ -1,8 +1,14 @@
-# Name		Time	Keep	Executed command
+# MySync rule file
+# Rule files must contain one rule per line, using following format:
+# <name> <time> <keep> <command>
+# Where:
+# - <name> is a unique identifier for this rule (used in backup file names)
+# - <time> is how old a backup can get (in seconds) before new one is required
+# - <keep> is the maximum number of backup files that must be kept
+# - <command> is the shell command to execute ; it must contain {} placeholder
+# Placeholder {} is replaced by path to backup file when commands are executed,
+# and they are expected to write their backup output to it.
 
-# Special token '{}' will be replaced by target archive path in your command,
-# which must output to this file
-
-# This is a demo rule, that auto-save current working directory every hour,
-# and keep up to three hours of backups
-sample		3600	10800	tar -czf {} *
+# This is a demo rule, that auto-save current working directory every hour and
+# keeps the last three backup files produced this way.
+sample		3600	3	tar -czf {} *
