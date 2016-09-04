@@ -84,6 +84,7 @@ fi
 . "$opt_config"
 
 filemode="${filemode:-0644}"
+lines="${lines:-10}"
 logerr="$(cd "$basedir" && readlink -m "${logerr:-/tmp/mysync.log.err}")"
 logout="$(cd "$basedir" && readlink -m "${logout:-/tmp/mysync.log.out}")"
 placeholder='\{([^{}]*)\}'
@@ -92,11 +93,14 @@ target="$(cd "$basedir" && readlink -m "${target:-/tmp}")"
 if ! echo "$filemode" | grep -qE '^[0-7]{3,4}$'; then
 	log 3 "invalid file mode '$filemode' in configuration file"
 	exit 1
-elif [ ! -n "$sources" ]; then
+elif ! echo "$lines" | grep -qE '^[0-9]+$'; then
+	log 3 "invalid number of lines '$lines' in configuration file"
+	exit 1
+elif [ -z "$sources" ]; then
 	log 3 "no source files defined in configuration file"
 	exit 1
 elif [ ! -d "$target" -o ! -r "$target" -o ! -w "$target" ]; then
-	log 3 "missing, non-readable or non-writable target path in configuration file: '$target'"
+	log 3 "missing, non-readable or non-writable target path '$target' in configuration file"
 	exit 1
 fi
 
@@ -183,6 +187,7 @@ for source in $(cd "$basedir" && echo $sources ); do
 				( echo "=== $name: $(date '+%Y-%m-%d %H:%M:%S'): stderr ===" && cat "$stderr" ) >> "$logerr"
 
 				log 2 "$name: got data on stderr, see logs for details"
+				head -n "$lines" "$stderr" >&2
 			fi
 
 			if [ "$(stat -c %s "$stdout")" -ne 0 ]; then
