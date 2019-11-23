@@ -91,16 +91,19 @@ placeholder='\{([^{}]*)\}'
 target="$(cd "$basedir" && readlink -m "${target:-/tmp}")"
 
 if ! echo "$filemode" | grep -qE '^[0-7]{3,4}$'; then
-	log 3 "invalid file mode '$filemode' in configuration file"
+	log 3 "invalid configuration: option filemode ($filemode) must be using octal format (e.g. 0644)"
 	exit 1
 elif ! echo "$lines" | grep -qE '^[0-9]+$'; then
-	log 3 "invalid number of lines '$lines' in configuration file"
+	log 3 "invalid configuration: option 'lines' ($lines) must be an integer"
+	exit 1
+elif echo "$placeholder" | grep -qF ':'; then
+	log 3 "invalid configuration: option 'placeholder' ($placeholder) cannot use character ':'"
 	exit 1
 elif [ -z "$sources" ]; then
-	log 3 "no source files defined in configuration file"
+	log 3 "invalid configuration: no source files defined"
 	exit 1
 elif [ ! -d "$target" -o ! -r "$target" -o ! -w "$target" ]; then
-	log 3 "missing, non-readable or non-writable target path '$target' in configuration file"
+	log 3 "invalid configuration: option 'target' ($target) is missing, non-readable or non-writable"
 	exit 1
 fi
 
@@ -121,19 +124,19 @@ for source in $(cd "$basedir" && echo $sources ); do
 	sed -r '/^(#|$)/d;s/[[:blank:]]+/ /g' "$source" |
 	while IFS=' ' read name time keep command; do
 		if ! echo "$name" | grep -Eq -- '^[-0-9A-Za-z_.]+$'; then
-			log 3 "invalid name '$name' in file '$source'"
+			log 3 "invalid source '$source': name ($name) contains invalid characters (letters/digits/dashes/dots/underscores allowed)"
 		elif ! echo "$time" | grep -Eq -- '^[0-9]+$'; then
-			log 3 "parameter 'time' is not an integer for rule '$name' in file '$source'"
+			log 3 "invalid source '$source': time ($time) is not an integer for rule '$name'"
 		elif ! echo "$keep" | grep -Eq -- '^[0-9]+$'; then
-			log 3 "parameter 'keep' is not an integer for rule '$name' in file '$source'"
+			log 3 "invalid source '$source': keep ($keep) is not an integer for rule '$name'"
 		elif ! echo "$command" | grep -Eq -- "$placeholder"; then
-			log 3 "parameter 'command' is missing placeholder for rule '$name' in file '$source'"
+			log 3 "invalid source '$source': command ($command) does not contain a placeholder for rule '$name'"
 		else
 			# Backward compatibility
 			if [ "$keep" -ge 3600 ]; then
 				keep="$((keep / time))"
 
-				log 2 "parameter 'keep' was too large for rule '$name' in file '$source' and was probably a duration ; up to $keep backup files will be kept instead"
+				log 2 "compatibility: parameter 'keep' was too large for rule '$name' in file '$source' and was probably a duration ; up to $keep backup files will be kept instead"
 			fi
 
 			# Browse existing backups
@@ -188,7 +191,7 @@ for source in $(cd "$basedir" && echo $sources ); do
 			if [ "$(stat -c %s "$stderr")" -ne 0 ]; then
 				( echo "=== $current: $(date '+%Y-%m-%d %H:%M:%S'): stderr ===" && cat "$stderr" ) >> "$logerr"
 
-				log 2 "$current: got data on stderr, see logs for details"
+				log 2 "$current: got data on stderr, see '$logerr' for details"
 				head -n "$lines" "$stderr" >&2
 			fi
 
