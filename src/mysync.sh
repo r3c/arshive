@@ -175,38 +175,36 @@ for source in $(cd "$basedir" && echo $sources ); do
 			test "${create:-1}" -ne 0 || continue
 
 			# Prepare new backup
-			current="$name.$now$suffix"
-
 			if [ -z "$opt_dryrun" ]; then
-				file="$target/$current"
+				file="$target/$name.$now$suffix"
 			else
 				file=/dev/null
 			fi
 
 			# Execute backup command
 			if ! sh -c "$(echo "$command" | sed -r "s:$placeholder:$file:")" < /dev/null 1> "$stdout" 2> "$stderr"; then
-				log 2 "$current: exited with error code, see logs for details"
+				log 2 "$name: exited with error code, see logs for details"
 			fi
 
 			if [ "$(stat -c %s "$stderr")" -ne 0 ]; then
-				( echo "=== $current: $(date '+%Y-%m-%d %H:%M:%S'): stderr ===" && cat "$stderr" ) >> "$logerr"
+				( echo "=== $name: $(date '+%Y-%m-%d %H:%M:%S'): stderr ===" && cat "$stderr" ) >> "$logerr"
 
-				log 2 "$current: got data on stderr, see '$logerr' for details"
+				log 2 "$name: got data on stderr, see '$logerr' for details"
 				head -n "$lines" "$stderr" >&2
 			fi
 
 			if [ "$(stat -c %s "$stdout")" -ne 0 ]; then
-				( echo "=== $current: $(date '+%Y-%m-%d %H:%M:%S'): stdout ===" && cat "$stdout" ) >> "$logout"
+				( echo "=== $name: $(date '+%Y-%m-%d %H:%M:%S'): stdout ===" && cat "$stdout" ) >> "$logout"
 			fi
 
 			if [ -n "$opt_dryrun" ]; then
-				log 1 "$current: new backup required"
+				log 1 "$name: new backup required"
 			elif ! [ -r "$file" ]; then
-				log 2 "$current: command didn't create backup file '$file'"
+				log 2 "$name: command didn't create backup file '$file'"
 			elif ! chmod -- "$filemode" "$file"; then
-				log 2 "$current: couldn't change mode of backup file '$file'"
+				log 2 "$name: couldn't change mode of backup file '$file'"
 			else
-				log 1 "$current: new backup file saved as '$file'"
+				log 1 "$name: new backup file saved as '$file'"
 			fi
 		fi
 	done
