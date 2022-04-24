@@ -1,0 +1,4 @@
+compatibility 3600 1 echo -n > {}
+name: echo -n > {}
+    interval=2
+    keep=3

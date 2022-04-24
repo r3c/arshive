@@ -1,0 +1,7 @@
+invalid line
+missing: no command placeholder
+$: invalid name character
+dummy: echo {}
+    invalid=50
+    interval=a
+    keep=b
