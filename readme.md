@@ -1,5 +1,8 @@
 # Arshive backup script
 
+[![Build Status](https://img.shields.io/github/workflow/status/r3c/arshive/validate/master)](https://github.com/r3c/arshive/actions)
+[![license](https://img.shields.io/github/license/r3c/arshive.svg)](https://opensource.org/licenses/MIT)
+
 ## Overview
 
 Arshive is a simple backup tool written in pure shell script. It is designed to
