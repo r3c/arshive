@@ -25,7 +25,7 @@ compare() {
 
 invoke() {
     local config="$1"
-    local script=$(dirname "$0")/../src/mysync.sh
+    local script=$(dirname "$0")/../src/arshive.sh
 
     "$script" -c "$config" -d
 }

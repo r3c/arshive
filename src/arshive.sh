@@ -7,6 +7,14 @@ log() {
 
 	if [ "$opt_log" -le "$level" ]; then
 		case "$level" in
+			0)
+				printf >&2 "debug: %s\n" "$@"
+				;;
+
+			1)
+				printf >&2 "%s\n" "$@"
+				;;
+
 			2)
 				printf >&2 "warning: %s\n" "$@"
 				;;
@@ -14,16 +22,12 @@ log() {
 			3)
 				printf >&2 "error: %s\n" "$@"
 				;;
-
-			*)
-				printf >&2 "%s\n" "$@"
-				;;
 		esac
 	fi
 }
 
 # Command line options
-opt_config="$(dirname "$0")"/mysync.conf
+opt_config="$(dirname "$0")"/arshive.conf
 opt_dryrun=
 opt_log=1
 
@@ -86,8 +90,8 @@ fi
 basedir="$(dirname "$(readlink -m "$opt_config")")"
 filemode="${filemode:-0644}"
 lines="${lines:-10}"
-logerr="$(cd "$basedir" && readlink -m "${logerr:-/tmp/mysync.log.err}")"
-logout="$(cd "$basedir" && readlink -m "${logout:-/tmp/mysync.log.out}")"
+logerr="$(cd "$basedir" && readlink -m "${logerr:-/tmp/arshive.log.err}")"
+logout="$(cd "$basedir" && readlink -m "${logout:-/tmp/arshive.log.out}")"
 placeholder='\{([^{}]*)\}'
 target="$(cd "$basedir" && readlink -m "${target:-/tmp}")"
 
@@ -108,12 +112,22 @@ elif [ ! -d "$target" -o ! -r "$target" -o ! -w "$target" ]; then
 	exit 1
 fi
 
+log 0 "starting with configuration from '$opt_config':"
+log 0 "  filemode: $filemode"
+log 0 "  lines: $lines"
+log 0 "  logerr: $logerr"
+log 0 "  logout: $logout"
+log 0 "  placeholder: $placeholder"
+log 0 "  target: $target"
+
 # Parse each rules file defined in "sources" setting
 result=0
 stderr="$(mktemp)"
 stdout="$(mktemp)"
 
 for source in $(cd "$basedir" && readlink -m $sources); do
+	log 0 "processing rule file '$source'"
+
 	# Check source path validity
 	if [ ! -r "$source" ]; then
 		log 3 "missing or unreadable rule file '$source'"
@@ -292,6 +306,8 @@ for source in $(cd "$basedir" && readlink -m $sources); do
 		done
 	}
 done
+
+log 0 'all done'
 
 # Cleanup temporary files
 rm -f "$stderr" "$stdout"

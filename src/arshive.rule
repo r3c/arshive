@@ -1,0 +1,20 @@
+# Arshive sample rule file
+#
+# Rule files can declare as many backup tasks as you want. Each backup task is
+# a shell command with a "name:" prefix, where "name" is the name of the task.
+#  - Name can be any [-_0-9A-Za-z] string and is used to name backup files
+#  - Command can be any command supported by your shell and must include a
+#    special "{.ext}" placeholder that will be replaced by backup file name.
+#  - Command is expected to print nothing on stderr, return a zero code and
+#    create a backup file named after the placeholder replacement.
+#
+# Backup tasks can be followed by one or more options, one per line right after
+# the one declaring the backup task. An option is a key-value pair and must
+# start with a blank character to differenciate it from a backup task.
+#
+# Here is a sample backup task saving today's quote of the day from "They Said
+# So Quotes" API, every day, and keeping the last 10 of these:
+
+quote-of-the-day: curl -o {.json} -s 'https://quotes.rest/qod?language=en'
+	interval=86400
+	keep=10
