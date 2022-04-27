@@ -41,7 +41,7 @@ run() {
     absolute="$(mktemp -d)"
 
     cat > "$config" << EOF
-sources='$absolute/*'
+rules='$absolute/*'
 EOF
 
     cat > "$absolute/1" << EOF
@@ -64,7 +64,7 @@ EOF
     relative2="$(dirname "$config")/test-relative2.rule"
 
     cat > "$config" << EOF
-sources=test-*.rule
+rules=test-*.rule
 EOF
 
     cat > "$relative1" << EOF
@@ -85,7 +85,7 @@ EOF
     # Should parse and execute various rule files
     for rule in "$basedir"/*.rule; do
         cat > "$config" << EOF
-sources='$(readlink -m "$rule")'
+rules='$(readlink -m "$rule")'
 EOF
 
         invoke "$config" 2> "$stderr"
