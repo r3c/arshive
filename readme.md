@@ -13,7 +13,7 @@ Checkout repository and place contents of the `src` directory anywhere in your
 file system, e.g. `/opt/arshive/`.
 
 Open and edit configuration file `arshive.conf` to declare one or more rule
-file(s) (see `sources` option) defining backup rules. Other options can be
+file(s) (see `rules` option) defining backup rules. Other options can be
 modified in this file to tweak the script behavior.
 
 Open and edit rule file(s) (see sample `arshive.rule` file) to define how, when

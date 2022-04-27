@@ -93,6 +93,7 @@ lines="${lines:-10}"
 logerr="$(cd "$basedir" && readlink -m "${logerr:-/tmp/arshive.log.err}")"
 logout="$(cd "$basedir" && readlink -m "${logout:-/tmp/arshive.log.out}")"
 placeholder='\{([^{}]*)\}'
+rules="${rules:-$sources}" # Backward compatibility
 target="$(cd "$basedir" && readlink -m "${target:-/tmp}")"
 
 if ! printf "%s\n" "$filemode" | grep -qE '^[0-7]{3,4}$'; then
@@ -104,8 +105,8 @@ elif ! printf "%s\n" "$lines" | grep -qE '^[0-9]+$'; then
 elif printf "%s\n" "$placeholder" | grep -qF ':'; then
 	log 3 "invalid configuration: option 'placeholder' ($placeholder) cannot use character ':'"
 	exit 1
-elif [ -z "$sources" ]; then
-	log 3 "invalid configuration: no source files defined"
+elif [ -z "$rules" ]; then
+	log 3 "invalid configuration: no rule files defined"
 	exit 1
 elif [ ! -d "$target" -o ! -r "$target" -o ! -w "$target" ]; then
 	log 3 "invalid configuration: option 'target' ($target) is not a readable & writable directory"
@@ -120,17 +121,17 @@ log 0 "  logout: $logout"
 log 0 "  placeholder: $placeholder"
 log 0 "  target: $target"
 
-# Parse each rules file defined in "sources" setting
+# Parse each rule file defined in "rules" setting
 result=0
 stderr="$(mktemp)"
 stdout="$(mktemp)"
 
-for source in $(cd "$basedir" && readlink -m $sources); do
-	log 0 "processing rule file '$source'"
+for rule in $(cd "$basedir" && readlink -m $rules); do
+	log 0 "processing rule file '$rule'"
 
-	# Check source path validity
-	if [ ! -r "$source" ]; then
-		log 3 "missing or unreadable rule file '$source'"
+	# Check rule path validity
+	if [ ! -r "$rule" ]; then
+		log 3 "missing or unreadable rule file '$rule'"
 		result=1
 
 		continue
@@ -138,7 +139,7 @@ for source in $(cd "$basedir" && readlink -m $sources); do
 
 	# Scan rules defined in current rule file
 	{
-		sed -r '/^(#|$)/d;s/\r$//' "$source"
+		sed -r '/^(#|$)/d;s/\r$//' "$rule"
 		echo 'flush:'
 	} |
 	{
@@ -160,7 +161,7 @@ for source in $(cd "$basedir" && readlink -m $sources); do
 				parse_2="$(printf "%s\n" "$line" | sed -nr "s/$rule_pattern/\\2/p")"
 
 				if ! printf "%s\n" "$parse_2" | grep -Eq -- "^\$|$placeholder"; then
-					log 3 "command '$parse_2' does not contain a placeholder for rule '$parse_1' in file '$source' at line #$line_index"
+					log 3 "command '$parse_2' does not contain a placeholder for rule '$parse_1' in file '$rule' at line #$line_index"
 					result=1
 
 					continue
@@ -177,7 +178,7 @@ for source in $(cd "$basedir" && readlink -m $sources); do
 				case "$parse_1" in
 					interval|keep)
 						if ! printf "%s\n" "$parse_2" | grep -Eq -- '^[0-9]+$'; then
-							log 2 "option '$parse_1' has a non-integer value '$parse_2' for rule '$next_rule_name' in file '$source' at line #$line_index"
+							log 2 "option '$parse_1' has a non-integer value '$parse_2' for rule '$next_rule_name' in file '$rule' at line #$line_index"
 							result=1
 
 							continue
@@ -186,7 +187,7 @@ for source in $(cd "$basedir" && readlink -m $sources); do
 						;;
 
 					*)
-						log 2 "option '$parse_1' is unknown in file '$source' at line #$line_index"
+						log 2 "option '$parse_1' is unknown in file '$rule' at line #$line_index"
 						result=1
 
 						continue
@@ -206,10 +207,10 @@ for source in $(cd "$basedir" && readlink -m $sources); do
 				if [ "$next_option_keep" -ge 3600 ]; then
 					option_keep="$((next_option_keep / next_option_interval))"
 
-					log 2 "compatibility: parameter 'keep' was too large for rule '$next_rule_name' in file '$source' at line #$line_index and was probably a duration ; up to $next_option_keep backup files will be kept instead"
+					log 2 "compatibility: parameter 'keep' was too large for rule '$next_rule_name' in file '$rule' at line #$line_index and was probably a duration ; up to $next_option_keep backup files will be kept instead"
 				fi
 			else
-				log 3 "ignoring unrecognized line '$line' in file '$source' at line #$line_index"
+				log 3 "ignoring unrecognized line '$line' in file '$rule' at line #$line_index"
 				result=1
 
 				continue
