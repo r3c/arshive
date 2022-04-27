@@ -4,5 +4,19 @@ compatibility 3600 1 echo -n > {}
     keep=3
 too-large: echo -n ab > {}
     max_size=1
+too-large-ratio: echo -n ab > {}
+too-large-ratio: echo -n abc > {}
+    interval=0
+    max_size_ratio=1.6
+too-large-ratio: echo -n abcde > {}
+    interval=0
+    max_size_ratio=1.6
 too-small: echo -n a > {}
     min_size=2
+too-small-ratio: echo -n abcd > {}
+too-small-ratio: echo -n abc > {}
+    interval=0
+    min_size_ratio=0.7
+too-small-ratio: echo -n ab > {}
+    interval=0
+    min_size_ratio=0.7

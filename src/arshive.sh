@@ -1,5 +1,9 @@
 #!/bin/sh -e
 
+calc() {
+	awk "BEGIN { printf \"%.3g\\n\", ($@) }"
+}
+
 log() {
 	local level="$1"
 
@@ -81,7 +85,7 @@ if [ $# -gt 0 ]; then
 fi
 
 # Check for required binaries
-for binary in date find grep mktemp printf readlink rm sed sh stat test; do
+for binary in awk date find grep mktemp printf readlink rm sed sh stat test; do
 	if ! which "$binary" > /dev/null 2> /dev/null; then
 		log 3 "binary $binary is required in \$PATH to run Arshive"
 		exit 2
@@ -195,6 +199,16 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 
 						;;
 
+					max_size_ratio|min_size_ratio)
+						if ! printf "%s\n" "$parse_2" | grep -Eq -- '^[0-9]+(\.[0-9]+)?$'; then
+							log 2 "option '$parse_1' has a non-decimal value '$parse_2' for rule '$next_rule_name' in file '$rule' at line #$line_index"
+							result=1
+
+							continue
+						fi
+
+						;;
+
 					*)
 						log 2 "option '$parse_1' is unknown in file '$rule' at line #$line_index"
 						result=1
@@ -227,59 +241,67 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 
 			# Flush command if there was a pending one
 			if [ -n "$rule_command" ]; then
-				# Browse existing backups
-				create=
-				keep="$option_keep"
+				# Browse existing backup files
+				backup_create=
+				backup_file_suffix="$(printf "%s\n" "$rule_command" | sed -nr -- "s:.*$placeholder.*:\\1:p")"
+				backup_keep="$option_keep"
+				last_file_size=
 				now="$(date +%s)"
-				suffix="$(printf "%s\n" "$rule_command" | sed -nr -- "s:.*$placeholder.*:\\1:p")"
 
-				for file in $(find -- "$target" -maxdepth 1 -type f -name "$rule_name.*$suffix" | sort -r); do
+				for file_path in $(find -- "$target" -maxdepth 1 -type f -name "$rule_name.*$backup_file_suffix" | sort -r); do
 					# Check is a new backup file is required
-					if [ -z "$create" ]; then
-						backup="$(printf "%s\n" "${file#$target/$rule_name.}" | sed -nr -- "s:^([0-9]+)$suffix\$:\\1:p")"
+					if [ -z "$backup_create" ]; then
+						backup="$(printf "%s\n" "${file_path#$target/$rule_name.}" | sed -nr -- "s:^([0-9]+)$backup_file_suffix\$:\\1:p")"
 
 						if [ -z "$backup" ]; then
-							log 2 "$rule_name: file '$file' doesn't match current rule and will be ignored"
+							log 2 "$rule_name: file '$file_path' doesn't match current rule and will be ignored"
 							result=1
 						elif [ "$((now - backup))" -ge "$option_interval" ]; then
-							create=1
+							backup_create=1
 						else
-							create=0
-							keep="$((keep + 1))"
+							backup_create=0
+							backup_keep="$((backup_keep + 1))"
 
 							log 1 "$rule_name: up to date"
 						fi
 					fi
 
+					# Remember size of the latest previous existing backup file
+					if [ -z "$last_file_size" ]; then
+						last_file_size="$(stat -c %s "$file_path")"
+					fi
+
 					# Delete expired backup files
-					if [ "$keep" -gt 1 ]; then
-						keep="$((keep - 1))"
+					if [ "$backup_keep" -gt 1 ]; then
+						backup_keep="$((backup_keep - 1))"
 					elif [ -n "$opt_dryrun" ]; then
-						log 1 "$rule_name: backup file '$file' would have been deleted without dry-run mode"
+						log 1 "$rule_name: backup file '$file_path' would have been deleted without dry-run mode"
 					else
-						log 1 "$rule_name: deleting backup file '$file'"
-						rm -f -- "$file"
+						log 1 "$rule_name: deleting backup file '$file_path'"
+						rm -f -- "$file_path"
 					fi
 				done
 
 				# Stop if no new backup is required
-				test "${create:-1}" -ne 0 || continue
+				test "${backup_create:-1}" -ne 0 || continue
 
 				# Prepare new backup
 				if [ -z "$opt_dryrun" ]; then
-					file="$target/$rule_name.$now$suffix"
+					backup_file_path="$target/$rule_name.$now$backup_file_suffix"
 				else
-					file=/dev/null
+					backup_file_path=/dev/null
 				fi
 
 				# Execute backup command
-				log 0 "$rule_name: run backup command to '$file'"
+				log 0 "$rule_name: run backup command to '$backup_file_path'"
 				log 0 "  interval=$option_interval"
 				log 0 "  keep=$option_keep"
 				log 0 "  max_size=$option_max_size"
+				log 0 "  max_size_ratio=$option_max_size_ratio"
 				log 0 "  min_size=$option_min_size"
+				log 0 "  min_size_ratio=$option_min_size_ratio"
 
-				if ! sh -c "$(printf "%s\n" "$rule_command" | sed -r "s:$placeholder:$file:")" </dev/null 1>"$stdout" 2>"$stderr"; then
+				if ! sh -c "$(printf "%s\n" "$rule_command" | sed -r "s:$placeholder:$backup_file_path:")" </dev/null 1>"$stdout" 2>"$stderr"; then
 					log 2 "$rule_name: exited with error code, see logs for details"
 					result=1
 				fi
@@ -309,30 +331,46 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 					log 1 "$rule_name: backup file would have been created without dry-run mode"
 
 				# Otherwise make sure file was properly created
-				elif ! [ -r "$file" ]; then
-					log 3 "$rule_name: command didn't create backup file '$file'"
+				elif ! [ -r "$backup_file_path" ]; then
+					log 3 "$rule_name: command didn't create backup file '$backup_file_path'"
 					result=1
 
 				# Otherwise file was created, perform sanity checks
 				else
-					file_size="$(stat -c %s "$file")"
+					backup_file_size="$(stat -c %s "$backup_file_path")"
 
-					if ! chmod -- "$filemode" "$file"; then
-						log 2 "$rule_name: couldn't change mode of backup file '$file'"
+					if ! chmod -- "$filemode" "$backup_file_path"; then
+						log 2 "$rule_name: couldn't change mode of backup file '$backup_file_path'"
 						result=1
 					fi
 
-					if [ "$file_size" -gt "$option_max_size" ]; then
-						log 2 "$rule_name: backup file '$file' is larger than expected ($file_size bytes)"
+					# Verify absolute size constraints
+					if [ "$backup_file_size" -gt "$option_max_size" ]; then
+						log 2 "$rule_name: backup file '$backup_file_path' is larger than expected ($backup_file_size bytes)"
 						result=1
 					fi
 
-					if [ "$file_size" -lt "$option_min_size" ]; then
-						log 2 "$rule_name: backup file '$file' is smaller than expected ($file_size bytes)"
+					if [ "$backup_file_size" -lt "$option_min_size" ]; then
+						log 2 "$rule_name: backup file '$backup_file_path' is smaller than expected ($backup_file_size bytes)"
 						result=1
 					fi
 
-					log 1 "$rule_name: new backup file saved as '$file'"
+					# Verify relative size constraints
+					if [ -n "$last_file_size" ]; then
+						size_ratio="$(calc "$backup_file_size / $last_file_size")"
+
+						if [ "$(calc "$size_ratio > $option_max_size_ratio")" != '0' ]; then
+							log 2 "$rule_name: backup file '$backup_file_path' is ${size_ratio}x larger than previous one"
+							result=1
+						fi
+
+						if [ "$(calc "$size_ratio < $option_min_size_ratio")" != '0' ]; then
+							log 2 "$rule_name: backup file '$backup_file_path' is ${size_ratio}x smaller than previous one"
+							result=1
+						fi
+					fi
+
+					log 1 "$rule_name: new backup file saved as '$backup_file_path'"
 				fi
 			fi
 
@@ -340,7 +378,9 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 			option_interval="$next_option_interval"
 			option_keep="$next_option_keep"
 			option_max_size=4294967295
+			option_max_size_ratio=10
 			option_min_size=0
+			option_min_size_ratio=0.1
 			rule_command="$next_rule_command"
 			rule_name="$next_rule_name"
 		done

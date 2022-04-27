@@ -46,8 +46,12 @@ Following rule options can be used to tweak a backup task:
   ones. Default value is 7.
 - `max_size=N`: log a warning if size of created backup file is larger than N
   bytes.
+- `max_size_ratio=N`: log a warning if size of created backup file is more than
+  N times larger than previous backup size (N can be a decimal number).
 - `min_size=N`: log a warning if size of created backup file is smaller than N
   bytes.
+- `min_size_ratio=N`: log a warning if size of created backup file is less than
+  N times smaller than previous backup size (N can be a decimal number).
 
 ## Resource
 
