@@ -1,4 +1,4 @@
 compatibility 3600 1 echo -n > {}
-name: echo -n > {}
+09_AZ-az.rule: echo -n > {}
     interval=2
     keep=3

@@ -143,14 +143,14 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 		echo 'flush:'
 	} |
 	{
-		compatibility_pattern='^[[:blank:]]*([^[:blank:]]+)[[:blank:]]+([0-9]+)[[:blank:]]+([0-9]+)[[:blank:]]+(.*)$'
+		deprecated_pattern='^[[:blank:]]*([-_0-9A-Za-z.]+)[[:blank:]]+([0-9]+)[[:blank:]]+([0-9]+)[[:blank:]]+(.*)$'
 		line_index=0
 		next_option_interval=86400
 		next_option_keep=7
 		option_pattern='^[[:blank:]]+([-_0-9A-Za-z]+)[[:blank:]]*=[[:blank:]]*(.*)$'
 		rule_command=''
 		rule_name=''
-		rule_pattern='^([-_0-9A-Za-z]+)[[:blank:]]*:[[:blank:]]*(.*)$'
+		rule_pattern='^([-_0-9A-Za-z.]+)[[:blank:]]*:[[:blank:]]*(.*)$'
 
 		while IFS='' read -r line; do
 			line_index="$((line_index + 1))"
@@ -198,11 +198,11 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 				eval "option_$parse_1='$parse_2'"
 
 				continue
-			elif printf "%s\n" "$line" | grep -Eq "$compatibility_pattern"; then
-				next_option_interval="$(printf "%s\n" "$line" | sed -nr "s/$compatibility_pattern/\\2/p")"
-				next_option_keep="$(printf "%s\n" "$line" | sed -nr "s/$compatibility_pattern/\\3/p")"
-				next_rule_command="$(printf "%s\n" "$line" | sed -nr "s/$compatibility_pattern/\\4/p")"
-				next_rule_name="$(printf "%s\n" "$line" | sed -nr "s/$compatibility_pattern/\\1/p")"
+			elif printf "%s\n" "$line" | grep -Eq "$deprecated_pattern"; then
+				next_option_interval="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\2/p")"
+				next_option_keep="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\3/p")"
+				next_rule_command="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\4/p")"
+				next_rule_name="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\1/p")"
 
 				if [ "$next_option_keep" -ge 3600 ]; then
 					option_keep="$((next_option_keep / next_option_interval))"
