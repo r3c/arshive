@@ -1,3 +1,7 @@
-^compatibility: should backup with \[interval=3600\]\[keep=1\]$
-^09_AZ-az.rule: should backup with \[interval=2\]\[keep=3\]$
+^compatibility: new backup file saved as '[^']*/compatibility\.[0-9]*'$
+^09_AZ-az.rule: new backup file saved as '[^']*/09_AZ-az.rule\.[0-9]*'$
+^warning: too-large: backup file '[^']*/too-large.[0-9]*' is larger than expected \(2 bytes\)$
+^too-large: new backup file saved as '[^']*/too-large.[0-9]*'$
+^warning: too-small: backup file '[^']*/too-small.[0-9]*' is smaller than expected \(1 bytes\)$
+^too-small: new backup file saved as '[^']*/too-small.[0-9]*'$
 ^$

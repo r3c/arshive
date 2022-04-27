@@ -1,7 +1,7 @@
 invalid line
 missing: no command placeholder
 $: invalid name character
-dummy: echo {}
+dummy: touch {}
     invalid=50
     interval=a
     keep=b

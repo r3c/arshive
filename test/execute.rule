@@ -2,3 +2,7 @@ compatibility 3600 1 echo -n > {}
 09_AZ-az.rule: echo -n > {}
     interval=2
     keep=3
+too-large: echo -n ab > {}
+    max_size=1
+too-small: echo -n a > {}
+    min_size=2

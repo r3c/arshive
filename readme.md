@@ -44,6 +44,10 @@ Following rule options can be used to tweak a backup task:
   or if no backup was successfully created yet. Default value is 86400 (1 day).
 - `keep=N`: keep the last N successfully created backup files and delete older
   ones. Default value is 7.
+- `max_size=N`: log a warning if size of created backup file is larger than N
+  bytes.
+- `min_size=N`: log a warning if size of created backup file is smaller than N
+  bytes.
 
 ## Resource
 
