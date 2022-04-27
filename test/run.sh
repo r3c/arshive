@@ -25,11 +25,12 @@ compare() {
 
 invoke() {
     local config="$1"
-    local script=$(dirname "$0")/../src/arshive.sh
+    local script="$basedir/../src/arshive.sh"
 
     "$script" -c "$config" -d
 }
 
+basedir="$(dirname "$0")"
 worktree="$(mktemp -d)"
 config="$worktree/config"
 result=0
@@ -81,14 +82,14 @@ if ! printf '^test-relative1: should backup\n^test-relative2: should backup\n^$\
 fi
 
 # Should parse and execute various rule files
-for path in $(dirname "$0")/*.rule; do
+for rule in "$basedir"/*.rule; do
     cat > "$config" << EOF
-sources='$(readlink -m "$path")'
+sources='$(readlink -m "$rule")'
 EOF
 
     invoke "$config" 2> "$stderr"
 
-    if ! compare "$path (stderr)" "$stderr" < "${path%.rule}.stderr"; then
+    if ! compare "$rule (stderr)" "$stderr" < "${rule%.rule}.stderr"; then
         result=1
     fi
 done

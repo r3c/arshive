@@ -126,7 +126,7 @@ result=0
 stderr="$(mktemp)"
 stdout="$(mktemp)"
 
-for rule in $(cd "$basedir" && readlink -m $rules); do
+for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 	log 0 "processing rule file '$rule'"
 
 	# Check rule path validity
