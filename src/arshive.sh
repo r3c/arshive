@@ -176,7 +176,7 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 				parse_2="$(printf "%s\n" "$line" | sed -nr "s/$option_pattern/\\2/p")"
 
 				case "$parse_1" in
-					interval|keep)
+					interval|keep|max_size|min_size)
 						if ! printf "%s\n" "$parse_2" | grep -Eq -- '^[0-9]+$'; then
 							log 2 "option '$parse_1' has a non-integer value '$parse_2' for rule '$next_rule_name' in file '$rule' at line #$line_index"
 							result=1
@@ -205,7 +205,7 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 				next_rule_name="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\1/p")"
 
 				if [ "$next_option_keep" -ge 3600 ]; then
-					option_keep="$((next_option_keep / next_option_interval))"
+					next_option_keep="$((next_option_keep / next_option_interval))"
 
 					log 2 "compatibility: parameter 'keep' was too large for rule '$next_rule_name' in file '$rule' at line #$line_index and was probably a duration ; up to $next_option_keep backup files will be kept instead"
 				fi
@@ -216,7 +216,7 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 				continue
 			fi
 
-			# Flush command if there was a pending one, otherwise continue parsing
+			# Flush command if there was a pending one
 			if [ -n "$rule_command" ]; then
 				# Browse existing backups
 				create=
@@ -246,7 +246,7 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 					if [ "$keep" -gt 1 ]; then
 						keep="$((keep - 1))"
 					elif [ -n "$opt_dryrun" ]; then
-						log 1 "$rule_name: backup file '$file' should have been deleted"
+						log 1 "$rule_name: backup file '$file' would have been deleted without dry-run mode"
 					else
 						log 1 "$rule_name: deleting backup file '$file'"
 						rm -f -- "$file"
@@ -264,11 +264,18 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 				fi
 
 				# Execute backup command
+				log 0 "$rule_name: run backup command to '$file'"
+				log 0 "  interval=$option_interval"
+				log 0 "  keep=$option_keep"
+				log 0 "  max_size=$option_max_size"
+				log 0 "  min_size=$option_min_size"
+
 				if ! sh -c "$(printf "%s\n" "$rule_command" | sed -r "s:$placeholder:$file:")" </dev/null 1>"$stdout" 2>"$stderr"; then
 					log 2 "$rule_name: exited with error code, see logs for details"
 					result=1
 				fi
 
+				# Check for non-empty contents in stderr, append to log and issue error if any
 				if [ "$(stat -c %s "$stderr")" -ne 0 ]; then
 					{
 						printf "%s\n" "=== $rule_name: $(date '+%Y-%m-%d %H:%M:%S'): stderr ==="
@@ -280,6 +287,7 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 					result=1
 				fi
 
+				# Check for non-empty contents in stdout, append to log if any
 				if [ "$(stat -c %s "$stdout")" -ne 0 ]; then
 					{
 						printf "%s\n" "=== $rule_name: $(date '+%Y-%m-%d %H:%M:%S'): stdout ==="
@@ -287,14 +295,34 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 					} >> "$logout"
 				fi
 
+				# Stop here in dry run mode
 				if [ -n "$opt_dryrun" ]; then
-					log 1 "$rule_name: should backup with [interval=$option_interval][keep=$option_keep]"
+					log 1 "$rule_name: backup file would have been created without dry-run mode"
+
+				# Otherwise make sure file was properly created
 				elif ! [ -r "$file" ]; then
-					log 2 "$rule_name: command didn't create backup file '$file'"
+					log 3 "$rule_name: command didn't create backup file '$file'"
 					result=1
-				elif ! chmod -- "$filemode" "$file"; then
-					log 2 "$rule_name: couldn't change mode of backup file '$file'"
+
+				# Otherwise file was created, perform sanity checks
 				else
+					file_size="$(stat -c %s "$file")"
+
+					if ! chmod -- "$filemode" "$file"; then
+						log 2 "$rule_name: couldn't change mode of backup file '$file'"
+						result=1
+					fi
+
+					if [ "$file_size" -gt "$option_max_size" ]; then
+						log 2 "$rule_name: backup file '$file' is larger than expected ($file_size bytes)"
+						result=1
+					fi
+
+					if [ "$file_size" -lt "$option_min_size" ]; then
+						log 2 "$rule_name: backup file '$file' is smaller than expected ($file_size bytes)"
+						result=1
+					fi
+
 					log 1 "$rule_name: new backup file saved as '$file'"
 				fi
 			fi
@@ -302,6 +330,8 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 			# Prepare next command
 			option_interval="$next_option_interval"
 			option_keep="$next_option_keep"
+			option_max_size=4294967295
+			option_min_size=0
 			rule_command="$next_rule_command"
 			rule_name="$next_rule_name"
 		done

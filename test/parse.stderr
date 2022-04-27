@@ -4,5 +4,5 @@
 ^warning: option 'invalid' is unknown in file '[^']*/parse\.rule' at line #5$
 ^warning: option 'interval' has a non-integer value 'a' for rule 'dummy' in file '[^']*/parse\.rule' at line #6$
 ^warning: option 'keep' has a non-integer value 'b' for rule 'dummy' in file '[^']*/parse\.rule' at line #7$
-^dummy: should backup with \[interval=86400\]\[keep=7\]$
+^dummy: new backup file saved as '[^']*/dummy\.[0-9]*'$
 ^$

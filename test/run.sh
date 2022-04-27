@@ -24,10 +24,9 @@ compare() {
 }
 
 invoke() {
-    local config="$1"
     local script="$basedir/../src/arshive.sh"
 
-    "$shell" "$script" -c "$config" -d
+    "$shell" "$script" "$@"
 }
 
 run() {
@@ -52,10 +51,10 @@ EOF
 test-directory2: echo -n > {}
 EOF
 
-    invoke "$config" 2> "$stderr"
+    invoke -c "$config" -d 2> "$stderr"
     rm -r "$absolute"
 
-    if ! printf '^test-directory1: should backup\n^test-directory2: should backup\n^$\n' | compare 'test-absolute' "$stderr"; then
+    if ! printf '^test-directory1: backup file would have been created without dry-run mode\n^test-directory2: backup file would have been created without dry-run mode\n^$\n' | compare 'test-absolute' "$stderr"; then
         result=1
     fi
 
@@ -75,24 +74,30 @@ EOF
 test-relative2: echo -n > {}
 EOF
 
-    invoke "$config" 2> "$stderr"
+    invoke -c "$config" -d 2> "$stderr"
     rm "$relative1" "$relative2"
 
-    if ! printf '^test-relative1: should backup\n^test-relative2: should backup\n^$\n' | compare 'test-relative' "$stderr"; then
+    if ! printf '^test-relative1: backup file would have been created without dry-run mode\n^test-relative2: backup file would have been created without dry-run mode\n^$\n' | compare 'test-relative' "$stderr"; then
         result=1
     fi
 
     # Should parse and execute various rule files
     for rule in "$basedir"/*.rule; do
+        target="$worktree/target"
+
+        mkdir "$target"
         cat > "$config" << EOF
 rules='$(readlink -m "$rule")'
+target='$target'
 EOF
 
-        invoke "$config" 2> "$stderr"
+        invoke -c "$config" 2> "$stderr"
 
         if ! compare "$rule (stderr)" "$stderr" < "${rule%.rule}.stderr"; then
             result=1
         fi
+
+        rm -r "$target"
     done
 
     # Cleanup
