@@ -42,7 +42,8 @@ while getopts :c:dhqv opt; do
 			;;
 
 		h)
-			echo >&2 "$(basename $0) [-c <path>] [-d] [-h] [-q] [-v]"
+			echo >&2 "Arshive v0.1"
+			echo >&2 "usage: $(basename $0) [-c <path>] [-d] [-h] [-q] [-v]"
 			echo >&2 '  -c <path>: use specified configuration file'
 			echo >&2 '  -d: dry run, execute commands but do not write or delete backups'
 			echo >&2 '  -h: display help and exit'
@@ -78,6 +79,14 @@ if [ $# -gt 0 ]; then
 	log 3 "unrecognized command line arguments: '$@'"
 	exit 1
 fi
+
+# Check for required binaries
+for binary in date find grep mktemp printf readlink rm sed sh stat test; do
+	if ! which "$binary" > /dev/null 2> /dev/null; then
+		log 3 "binary $binary is required in \$PATH to run Arshive"
+		exit 2
+	fi
+done
 
 # Read configuration file and verify settings
 if [ ! -r "$opt_config" ]; then
