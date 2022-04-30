@@ -241,6 +241,15 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 
 			# Flush command if there was a pending one
 			if [ -n "$rule_command" ]; then
+				log 0 "$rule_name: process task at time=$now"
+				log 0 "  command=$rule_command"
+				log 0 "  interval=$option_interval"
+				log 0 "  keep=$option_keep"
+				log 0 "  max_size=$option_max_size"
+				log 0 "  max_size_ratio=$option_max_size_ratio"
+				log 0 "  min_size=$option_min_size"
+				log 0 "  min_size_ratio=$option_min_size_ratio"
+
 				# Browse existing backup files
 				backup_create=
 				backup_file_suffix="$(printf "%s\n" "$rule_command" | sed -nr -- "s:.*$placeholder.*:\\1:p")"
@@ -293,15 +302,7 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 				fi
 
 				# Execute backup command
-				log 0 "$rule_name: run backup command to '$backup_file_path'"
-				log 0 "  interval=$option_interval"
-				log 0 "  keep=$option_keep"
-				log 0 "  max_size=$option_max_size"
-				log 0 "  max_size_ratio=$option_max_size_ratio"
-				log 0 "  min_size=$option_min_size"
-				log 0 "  min_size_ratio=$option_min_size_ratio"
-
-				if ! sh -c "$(printf "%s\n" "$rule_command" | sed -r "s:$placeholder:$backup_file_path:")" </dev/null 1>"$stdout" 2>"$stderr"; then
+				if ! sh -c "$(printf "%s\n" "$rule_command" | sed -r "s:$placeholder:$backup_file_path:")" < /dev/null 1> "$stdout" 2> "$stderr"; then
 					log 2 "$rule_name: exited with error code, see logs for details"
 					result=1
 				fi
