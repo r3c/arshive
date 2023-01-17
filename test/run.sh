@@ -2,21 +2,46 @@
 
 compare() {
     local actual="$2"
+    local actual_eof=0
     local actual_line
     local context="$1"
+    local expect_eof=0
     local expect_line
     local line_index=0
     local result=0
 
-    while IFS='' read -r actual_line <&3 && read -r expect_line <&4; do
+    while true; do
+        IFS='' read -r actual_line <&3 || actual_eof=1
+        IFS='' read -r expect_line <&4 || expect_eof=1
+
+        if [ "$actual_eof" -ne 0 -a "$expect_eof" -ne 0 ]; then
+            break
+        elif [ "$actual_eof" -ne 0 ]; then
+            echo >&2 "error for '$context' at line $line_index, unexpected EOL"
+            echo >&2 "  expected: [$expect_line]"
+
+            return=1
+
+            break
+        elif [ "$expect_eof" -ne 0 ]; then
+            echo >&2 "error for '$context' at line $line_index, exceeding line"
+            echo >&2 "  obtained: [$actual_line]"
+
+            return=1
+
+            break
+        fi
+
         line_index="$((line_index + 1))"
 
         if ! echo "$actual_line" | grep -Eq -- "$expect_line"; then
-            echo >&2 "match error for '$context' at line $line_index:"
+            echo >&2 "error for '$context' at line $line_index, lines did not match:"
             echo >&2 "  expected: [$expect_line]"
             echo >&2 "  obtained: [$actual_line]"
 
             result=1
+
+            break
         fi
     done 3<"$actual" 4<&0
 
@@ -25,6 +50,9 @@ compare() {
 
 invoke() {
     local script="$basedir/../src/arshive.sh"
+    local shell="$1"
+
+    shift
 
     "$shell" "$script" "$@"
 }
@@ -51,10 +79,10 @@ EOF
 test-directory2: echo -n > {}
 EOF
 
-    invoke -c "$config" -d 2>"$stderr"
+    invoke "$shell" -c "$config" -d 2>"$stderr"
     rm -r "$absolute"
 
-    if ! printf '^test-directory1: backup file would have been created without dry-run mode\n^test-directory2: backup file would have been created without dry-run mode\n^$\n' | compare 'test-absolute' "$stderr"; then
+    if ! printf '^test-directory1: backup file would have been created without dry-run mode\n^test-directory2: backup file would have been created without dry-run mode\n' | compare 'test-absolute' "$stderr"; then
         result=1
     fi
 
@@ -74,10 +102,10 @@ EOF
 test-relative2: echo -n > {}
 EOF
 
-    invoke -c "$config" -d 2>"$stderr"
+    invoke "$shell" -c "$config" -d 2>"$stderr"
     rm "$relative1" "$relative2"
 
-    if ! printf '^test-relative1: backup file would have been created without dry-run mode\n^test-relative2: backup file would have been created without dry-run mode\n^$\n' | compare 'test-relative' "$stderr"; then
+    if ! printf '^test-relative1: backup file would have been created without dry-run mode\n^test-relative2: backup file would have been created without dry-run mode\n' | compare 'test-relative' "$stderr"; then
         result=1
     fi
 
@@ -91,7 +119,7 @@ rules='$(readlink -m "$rule")'
 target='$target'
 EOF
 
-        invoke -c "$config" 2>"$stderr"
+        invoke "$shell" -c "$config" 2>"$stderr"
 
         if ! compare "$rule (stderr)" "$stderr" <"${rule%.rule}.stderr"; then
             result=1
