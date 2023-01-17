@@ -18,7 +18,7 @@ compare() {
 
             result=1
         fi
-    done 3< "$actual" 4<&0
+    done 3<"$actual" 4<&0
 
     return "$result"
 }
@@ -39,19 +39,19 @@ run() {
     # Should read rule files from absolute path
     absolute="$(mktemp -d)"
 
-    cat > "$config" << EOF
+    cat >"$config" <<EOF
 rules='$absolute/*'
 EOF
 
-    cat > "$absolute/1" << EOF
+    cat >"$absolute/1" <<EOF
 test-directory1: echo -n > {}
 EOF
 
-    cat > "$absolute/2" << EOF
+    cat >"$absolute/2" <<EOF
 test-directory2: echo -n > {}
 EOF
 
-    invoke -c "$config" -d 2> "$stderr"
+    invoke -c "$config" -d 2>"$stderr"
     rm -r "$absolute"
 
     if ! printf '^test-directory1: backup file would have been created without dry-run mode\n^test-directory2: backup file would have been created without dry-run mode\n^$\n' | compare 'test-absolute' "$stderr"; then
@@ -62,19 +62,19 @@ EOF
     relative1="$(dirname "$config")/test-relative1.rule"
     relative2="$(dirname "$config")/test-relative2.rule"
 
-    cat > "$config" << EOF
+    cat >"$config" <<EOF
 rules=test-*.rule
 EOF
 
-    cat > "$relative1" << EOF
+    cat >"$relative1" <<EOF
 test-relative1: echo -n > {}
 EOF
 
-    cat > "$relative2" << EOF
+    cat >"$relative2" <<EOF
 test-relative2: echo -n > {}
 EOF
 
-    invoke -c "$config" -d 2> "$stderr"
+    invoke -c "$config" -d 2>"$stderr"
     rm "$relative1" "$relative2"
 
     if ! printf '^test-relative1: backup file would have been created without dry-run mode\n^test-relative2: backup file would have been created without dry-run mode\n^$\n' | compare 'test-relative' "$stderr"; then
@@ -86,14 +86,14 @@ EOF
         target="$worktree/target"
 
         mkdir "$target"
-        cat > "$config" << EOF
+        cat >"$config" <<EOF
 rules='$(readlink -m "$rule")'
 target='$target'
 EOF
 
-        invoke -c "$config" 2> "$stderr"
+        invoke -c "$config" 2>"$stderr"
 
-        if ! compare "$rule (stderr)" "$stderr" < "${rule%.rule}.stderr"; then
+        if ! compare "$rule (stderr)" "$stderr" <"${rule%.rule}.stderr"; then
             result=1
         fi
 
@@ -110,28 +110,28 @@ basedir="$(dirname "$0")"
 opt_shell=sh
 
 while getopts :hs: opt; do
-	case "$opt" in
-		h)
-			echo >&2 "$(basename $0) [-h] [-s <shell>]"
-			echo >&2 '  -h: display help and exit'
-			echo >&2 '  -s <shell>: use specified shell to run tests'
-			exit
-			;;
+    case "$opt" in
+    h)
+        echo >&2 "$(basename $0) [-h] [-s <shell>]"
+        echo >&2 '  -h: display help and exit'
+        echo >&2 '  -s <shell>: use specified shell to run tests'
+        exit
+        ;;
 
-		s)
-			opt_shell="$OPTARG"
-			;;
+    s)
+        opt_shell="$OPTARG"
+        ;;
 
-		:)
-			echo >&2 "missing argument for option '-$OPTARG'"
-			exit 1
-			;;
+    :)
+        echo >&2 "missing argument for option '-$OPTARG'"
+        exit 1
+        ;;
 
-		*)
-			echo >&2 "unknown option '-$OPTARG'"
-			exit 1
-			;;
-	esac
+    *)
+        echo >&2 "unknown option '-$OPTARG'"
+        exit 1
+        ;;
+    esac
 done
 
 shift "$((OPTIND - 1))"

@@ -11,21 +11,21 @@ log() {
 
 	if [ "$opt_log" -le "$level" ]; then
 		case "$level" in
-			0)
-				printf >&2 "debug: %s\n" "$@"
-				;;
+		0)
+			printf >&2 "debug: %s\n" "$@"
+			;;
 
-			1)
-				printf >&2 "%s\n" "$@"
-				;;
+		1)
+			printf >&2 "%s\n" "$@"
+			;;
 
-			2)
-				printf >&2 "warning: %s\n" "$@"
-				;;
+		2)
+			printf >&2 "warning: %s\n" "$@"
+			;;
 
-			3)
-				printf >&2 "error: %s\n" "$@"
-				;;
+		3)
+			printf >&2 "error: %s\n" "$@"
+			;;
 		esac
 	fi
 }
@@ -37,42 +37,42 @@ opt_log=1
 
 while getopts :c:dhqv opt; do
 	case "$opt" in
-		c)
-			opt_config="$(readlink -m "$OPTARG")"
-			;;
+	c)
+		opt_config="$(readlink -m "$OPTARG")"
+		;;
 
-		d)
-			opt_dryrun=1
-			;;
+	d)
+		opt_dryrun=1
+		;;
 
-		h)
-			echo >&2 "Arshive v0.1"
-			echo >&2 "usage: $(basename $0) [-c <path>] [-d] [-h] [-q] [-v]"
-			echo >&2 '  -c <path>: use specified configuration file'
-			echo >&2 '  -d: dry run, execute commands but do not write or delete backups'
-			echo >&2 '  -h: display help and exit'
-			echo >&2 '  -q: quiet mode'
-			echo >&2 '  -v: verbose mode'
-			exit
-			;;
+	h)
+		echo >&2 "Arshive v0.1"
+		echo >&2 "usage: $(basename $0) [-c <path>] [-d] [-h] [-q] [-v]"
+		echo >&2 '  -c <path>: use specified configuration file'
+		echo >&2 '  -d: dry run, execute commands but do not write or delete backups'
+		echo >&2 '  -h: display help and exit'
+		echo >&2 '  -q: quiet mode'
+		echo >&2 '  -v: verbose mode'
+		exit
+		;;
 
-		q)
-			opt_log=2
-			;;
+	q)
+		opt_log=2
+		;;
 
-		v)
-			opt_log=0
-			;;
+	v)
+		opt_log=0
+		;;
 
-		:)
-			log 3 "missing argument for option '-$OPTARG'"
-			exit 1
-			;;
+	:)
+		log 3 "missing argument for option '-$OPTARG'"
+		exit 1
+		;;
 
-		*)
-			log 3 "unknown option '-$OPTARG'"
-			exit 1
-			;;
+	*)
+		log 3 "unknown option '-$OPTARG'"
+		exit 1
+		;;
 	esac
 done
 
@@ -86,7 +86,7 @@ fi
 
 # Check for required binaries
 for binary in awk date find grep mktemp printf readlink rm sed sh stat test; do
-	if ! which "$binary" > /dev/null 2> /dev/null; then
+	if ! which "$binary" >/dev/null 2>/dev/null; then
 		log 3 "binary $binary is required in \$PATH to run Arshive"
 		exit 2
 	fi
@@ -155,41 +155,41 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 		sed -r '/^(#|$)/d;s/\r$//' "$rule"
 		echo 'flush:'
 	} |
-	{
-		deprecated_pattern='^[[:blank:]]*([-_0-9A-Za-z.]+)[[:blank:]]+([0-9]+)[[:blank:]]+([0-9]+)[[:blank:]]+(.*)$'
-		line_index=0
-		next_option_interval=86400
-		next_option_keep=7
-		option_pattern='^[[:blank:]]+([-_0-9A-Za-z]+)[[:blank:]]*=[[:blank:]]*(.*)$'
-		rule_command=''
-		rule_name=''
-		rule_pattern='^([-_0-9A-Za-z.]+)[[:blank:]]*:[[:blank:]]*(.*)$'
+		{
+			deprecated_pattern='^[[:blank:]]*([-_0-9A-Za-z.]+)[[:blank:]]+([0-9]+)[[:blank:]]+([0-9]+)[[:blank:]]+(.*)$'
+			line_index=0
+			next_option_interval=86400
+			next_option_keep=7
+			option_pattern='^[[:blank:]]+([-_0-9A-Za-z]+)[[:blank:]]*=[[:blank:]]*(.*)$'
+			rule_command=''
+			rule_name=''
+			rule_pattern='^([-_0-9A-Za-z.]+)[[:blank:]]*:[[:blank:]]*(.*)$'
 
-		while IFS='' read -r line; do
-			line_index="$((line_index + 1))"
+			while IFS='' read -r line; do
+				line_index="$((line_index + 1))"
 
-			# Parse current line
-			if printf "%s\n" "$line" | grep -Eq "$rule_pattern"; then
-				parse_1="$(printf "%s\n" "$line" | sed -nr "s/$rule_pattern/\\1/p")"
-				parse_2="$(printf "%s\n" "$line" | sed -nr "s/$rule_pattern/\\2/p")"
+				# Parse current line
+				if printf "%s\n" "$line" | grep -Eq "$rule_pattern"; then
+					parse_1="$(printf "%s\n" "$line" | sed -nr "s/$rule_pattern/\\1/p")"
+					parse_2="$(printf "%s\n" "$line" | sed -nr "s/$rule_pattern/\\2/p")"
 
-				if ! printf "%s\n" "$parse_2" | grep -Eq -- "^\$|$placeholder"; then
-					log 3 "command '$parse_2' does not contain a placeholder for rule '$parse_1' in file '$rule' at line #$line_index"
-					result=1
+					if ! printf "%s\n" "$parse_2" | grep -Eq -- "^\$|$placeholder"; then
+						log 3 "command '$parse_2' does not contain a placeholder for rule '$parse_1' in file '$rule' at line #$line_index"
+						result=1
 
-					continue
-				fi
+						continue
+					fi
 
-				next_option_interval=86400
-				next_option_keep=7
-				next_rule_command="$parse_2"
-				next_rule_name="$parse_1"
-			elif printf "%s\n" "$line" | grep -Eq "$option_pattern"; then
-				parse_1="$(printf "%s\n" "$line" | sed -nr "s/$option_pattern/\\1/p")"
-				parse_2="$(printf "%s\n" "$line" | sed -nr "s/$option_pattern/\\2/p")"
+					next_option_interval=86400
+					next_option_keep=7
+					next_rule_command="$parse_2"
+					next_rule_name="$parse_1"
+				elif printf "%s\n" "$line" | grep -Eq "$option_pattern"; then
+					parse_1="$(printf "%s\n" "$line" | sed -nr "s/$option_pattern/\\1/p")"
+					parse_2="$(printf "%s\n" "$line" | sed -nr "s/$option_pattern/\\2/p")"
 
-				case "$parse_1" in
-					interval|keep|max_size|min_size)
+					case "$parse_1" in
+					interval | keep | max_size | min_size)
 						if ! printf "%s\n" "$parse_2" | grep -Eq -- '^[0-9]+$'; then
 							log 2 "option '$parse_1' has a non-integer value '$parse_2' for rule '$next_rule_name' in file '$rule' at line #$line_index"
 							result=1
@@ -199,7 +199,7 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 
 						;;
 
-					max_size_ratio|min_size_ratio)
+					max_size_ratio | min_size_ratio)
 						if ! printf "%s\n" "$parse_2" | grep -Eq -- '^[0-9]+(\.[0-9]+)?$'; then
 							log 2 "option '$parse_1' has a non-decimal value '$parse_2' for rule '$next_rule_name' in file '$rule' at line #$line_index"
 							result=1
@@ -216,176 +216,176 @@ for rule in $(cd "$basedir" && eval "readlink -m $rules"); do
 						continue
 
 						;;
-				esac
+					esac
 
-				eval "option_$parse_1='$parse_2'"
+					eval "option_$parse_1='$parse_2'"
 
-				continue
-			elif printf "%s\n" "$line" | grep -Eq "$deprecated_pattern"; then
-				next_option_interval="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\2/p")"
-				next_option_keep="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\3/p")"
-				next_rule_command="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\4/p")"
-				next_rule_name="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\1/p")"
+					continue
+				elif printf "%s\n" "$line" | grep -Eq "$deprecated_pattern"; then
+					next_option_interval="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\2/p")"
+					next_option_keep="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\3/p")"
+					next_rule_command="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\4/p")"
+					next_rule_name="$(printf "%s\n" "$line" | sed -nr "s/$deprecated_pattern/\\1/p")"
 
-				if [ "$next_option_keep" -ge 3600 ]; then
-					next_option_keep="$((next_option_keep / next_option_interval))"
+					if [ "$next_option_keep" -ge 3600 ]; then
+						next_option_keep="$((next_option_keep / next_option_interval))"
 
-					log 2 "compatibility: parameter 'keep' was too large for rule '$next_rule_name' in file '$rule' at line #$line_index and was probably a duration ; up to $next_option_keep backup files will be kept instead"
+						log 2 "compatibility: parameter 'keep' was too large for rule '$next_rule_name' in file '$rule' at line #$line_index and was probably a duration ; up to $next_option_keep backup files will be kept instead"
+					fi
+				else
+					log 3 "ignoring unrecognized line '$line' in file '$rule' at line #$line_index"
+					result=1
+
+					continue
 				fi
-			else
-				log 3 "ignoring unrecognized line '$line' in file '$rule' at line #$line_index"
-				result=1
 
-				continue
-			fi
+				# Flush command if there was a pending one
+				if [ -n "$rule_command" ]; then
+					log 0 "$rule_name: process task at time=$now"
+					log 0 "  command=$rule_command"
+					log 0 "  interval=$option_interval"
+					log 0 "  keep=$option_keep"
+					log 0 "  max_size=$option_max_size"
+					log 0 "  max_size_ratio=$option_max_size_ratio"
+					log 0 "  min_size=$option_min_size"
+					log 0 "  min_size_ratio=$option_min_size_ratio"
 
-			# Flush command if there was a pending one
-			if [ -n "$rule_command" ]; then
-				log 0 "$rule_name: process task at time=$now"
-				log 0 "  command=$rule_command"
-				log 0 "  interval=$option_interval"
-				log 0 "  keep=$option_keep"
-				log 0 "  max_size=$option_max_size"
-				log 0 "  max_size_ratio=$option_max_size_ratio"
-				log 0 "  min_size=$option_min_size"
-				log 0 "  min_size_ratio=$option_min_size_ratio"
+					# Browse existing backup files
+					backup_create=
+					backup_file_suffix="$(printf "%s\n" "$rule_command" | sed -nr -- "s:.*$placeholder.*:\\1:p")"
+					backup_keep="$option_keep"
+					last_file_size=
+					now="$(date +%s)"
 
-				# Browse existing backup files
-				backup_create=
-				backup_file_suffix="$(printf "%s\n" "$rule_command" | sed -nr -- "s:.*$placeholder.*:\\1:p")"
-				backup_keep="$option_keep"
-				last_file_size=
-				now="$(date +%s)"
+					for file_path in $(find -- "$target" -maxdepth 1 -type f -name "$rule_name.*$backup_file_suffix" | sort -r); do
+						# Check is a new backup file is required
+						if [ -z "$backup_create" ]; then
+							backup="$(printf "%s\n" "${file_path#$target/$rule_name.}" | sed -nr -- "s:^([0-9]+)$backup_file_suffix\$:\\1:p")"
 
-				for file_path in $(find -- "$target" -maxdepth 1 -type f -name "$rule_name.*$backup_file_suffix" | sort -r); do
-					# Check is a new backup file is required
-					if [ -z "$backup_create" ]; then
-						backup="$(printf "%s\n" "${file_path#$target/$rule_name.}" | sed -nr -- "s:^([0-9]+)$backup_file_suffix\$:\\1:p")"
+							if [ -z "$backup" ]; then
+								log 2 "$rule_name: file '$file_path' doesn't match current rule and will be ignored"
+								result=1
+							elif [ "$((now - backup))" -ge "$option_interval" ]; then
+								backup_create=1
+							else
+								backup_create=0
+								backup_keep="$((backup_keep + 1))"
 
-						if [ -z "$backup" ]; then
-							log 2 "$rule_name: file '$file_path' doesn't match current rule and will be ignored"
-							result=1
-						elif [ "$((now - backup))" -ge "$option_interval" ]; then
-							backup_create=1
+								log 1 "$rule_name: up to date"
+							fi
+						fi
+
+						# Remember size of the latest previous existing backup file
+						if [ -z "$last_file_size" ]; then
+							last_file_size="$(stat -c %s "$file_path")"
+						fi
+
+						# Delete expired backup files
+						if [ "$backup_keep" -gt 1 ]; then
+							backup_keep="$((backup_keep - 1))"
+						elif [ -n "$opt_dryrun" ]; then
+							log 1 "$rule_name: backup file '$file_path' would have been deleted without dry-run mode"
 						else
-							backup_create=0
-							backup_keep="$((backup_keep + 1))"
-
-							log 1 "$rule_name: up to date"
+							log 1 "$rule_name: deleting backup file '$file_path'"
+							rm -f -- "$file_path"
 						fi
-					fi
+					done
 
-					# Remember size of the latest previous existing backup file
-					if [ -z "$last_file_size" ]; then
-						last_file_size="$(stat -c %s "$file_path")"
-					fi
+					# Stop if no new backup is required
+					test "${backup_create:-1}" -ne 0 || continue
 
-					# Delete expired backup files
-					if [ "$backup_keep" -gt 1 ]; then
-						backup_keep="$((backup_keep - 1))"
-					elif [ -n "$opt_dryrun" ]; then
-						log 1 "$rule_name: backup file '$file_path' would have been deleted without dry-run mode"
+					# Prepare new backup
+					if [ -z "$opt_dryrun" ]; then
+						backup_file_path="$target/$rule_name.$now$backup_file_suffix"
 					else
-						log 1 "$rule_name: deleting backup file '$file_path'"
-						rm -f -- "$file_path"
+						backup_file_path=/dev/null
 					fi
-				done
 
-				# Stop if no new backup is required
-				test "${backup_create:-1}" -ne 0 || continue
-
-				# Prepare new backup
-				if [ -z "$opt_dryrun" ]; then
-					backup_file_path="$target/$rule_name.$now$backup_file_suffix"
-				else
-					backup_file_path=/dev/null
-				fi
-
-				# Execute backup command
-				if ! sh -c "$(printf "%s\n" "$rule_command" | sed -r "s:$placeholder:$backup_file_path:")" < /dev/null 1> "$stdout" 2> "$stderr"; then
-					log 2 "$rule_name: exited with error code, see logs for details"
-					result=1
-				fi
-
-				# Check for non-empty contents in stderr, append to log and issue error if any
-				if [ "$(stat -c %s "$stderr")" -ne 0 ]; then
-					{
-						printf "%s\n" "=== $rule_name: $(date '+%Y-%m-%d %H:%M:%S'): stderr ==="
-						cat "$stderr"
-					} >> "$logerr"
-
-					log 2 "$rule_name: got data on stderr, see '$logerr' for details"
-					head -n "$lines" "$stderr" >&2
-					result=1
-				fi
-
-				# Check for non-empty contents in stdout, append to log if any
-				if [ "$(stat -c %s "$stdout")" -ne 0 ]; then
-					{
-						printf "%s\n" "=== $rule_name: $(date '+%Y-%m-%d %H:%M:%S'): stdout ==="
-						cat "$stdout"
-					} >> "$logout"
-				fi
-
-				# Stop here in dry run mode
-				if [ -n "$opt_dryrun" ]; then
-					log 1 "$rule_name: backup file would have been created without dry-run mode"
-
-				# Otherwise make sure file was properly created
-				elif ! [ -r "$backup_file_path" ]; then
-					log 3 "$rule_name: command didn't create backup file '$backup_file_path'"
-					result=1
-
-				# Otherwise file was created, perform sanity checks
-				else
-					backup_file_size="$(stat -c %s "$backup_file_path")"
-
-					if ! chmod -- "$filemode" "$backup_file_path"; then
-						log 2 "$rule_name: couldn't change mode of backup file '$backup_file_path'"
+					# Execute backup command
+					if ! sh -c "$(printf "%s\n" "$rule_command" | sed -r "s:$placeholder:$backup_file_path:")" </dev/null 1>"$stdout" 2>"$stderr"; then
+						log 2 "$rule_name: exited with error code, see logs for details"
 						result=1
 					fi
 
-					# Verify absolute size constraints
-					if [ "$backup_file_size" -gt "$option_max_size" ]; then
-						log 2 "$rule_name: backup file '$backup_file_path' is larger than expected ($backup_file_size bytes)"
+					# Check for non-empty contents in stderr, append to log and issue error if any
+					if [ "$(stat -c %s "$stderr")" -ne 0 ]; then
+						{
+							printf "%s\n" "=== $rule_name: $(date '+%Y-%m-%d %H:%M:%S'): stderr ==="
+							cat "$stderr"
+						} >>"$logerr"
+
+						log 2 "$rule_name: got data on stderr, see '$logerr' for details"
+						head -n "$lines" "$stderr" >&2
 						result=1
 					fi
 
-					if [ "$backup_file_size" -lt "$option_min_size" ]; then
-						log 2 "$rule_name: backup file '$backup_file_path' is smaller than expected ($backup_file_size bytes)"
-						result=1
+					# Check for non-empty contents in stdout, append to log if any
+					if [ "$(stat -c %s "$stdout")" -ne 0 ]; then
+						{
+							printf "%s\n" "=== $rule_name: $(date '+%Y-%m-%d %H:%M:%S'): stdout ==="
+							cat "$stdout"
+						} >>"$logout"
 					fi
 
-					# Verify relative size constraints
-					if [ -n "$last_file_size" ]; then
-						size_ratio="$(calc "$backup_file_size / $last_file_size")"
+					# Stop here in dry run mode
+					if [ -n "$opt_dryrun" ]; then
+						log 1 "$rule_name: backup file would have been created without dry-run mode"
 
-						if [ "$(calc "$size_ratio > $option_max_size_ratio")" != '0' ]; then
-							log 2 "$rule_name: backup file '$backup_file_path' is ${size_ratio}x larger than previous one"
+					# Otherwise make sure file was properly created
+					elif ! [ -r "$backup_file_path" ]; then
+						log 3 "$rule_name: command didn't create backup file '$backup_file_path'"
+						result=1
+
+					# Otherwise file was created, perform sanity checks
+					else
+						backup_file_size="$(stat -c %s "$backup_file_path")"
+
+						if ! chmod -- "$filemode" "$backup_file_path"; then
+							log 2 "$rule_name: couldn't change mode of backup file '$backup_file_path'"
 							result=1
 						fi
 
-						if [ "$(calc "$size_ratio < $option_min_size_ratio")" != '0' ]; then
-							log 2 "$rule_name: backup file '$backup_file_path' is ${size_ratio}x smaller than previous one"
+						# Verify absolute size constraints
+						if [ "$backup_file_size" -gt "$option_max_size" ]; then
+							log 2 "$rule_name: backup file '$backup_file_path' is larger than expected ($backup_file_size bytes)"
 							result=1
 						fi
+
+						if [ "$backup_file_size" -lt "$option_min_size" ]; then
+							log 2 "$rule_name: backup file '$backup_file_path' is smaller than expected ($backup_file_size bytes)"
+							result=1
+						fi
+
+						# Verify relative size constraints
+						if [ -n "$last_file_size" ]; then
+							size_ratio="$(calc "$backup_file_size / $last_file_size")"
+
+							if [ "$(calc "$size_ratio > $option_max_size_ratio")" != '0' ]; then
+								log 2 "$rule_name: backup file '$backup_file_path' is ${size_ratio}x larger than previous one"
+								result=1
+							fi
+
+							if [ "$(calc "$size_ratio < $option_min_size_ratio")" != '0' ]; then
+								log 2 "$rule_name: backup file '$backup_file_path' is ${size_ratio}x smaller than previous one"
+								result=1
+							fi
+						fi
+
+						log 1 "$rule_name: new backup file saved as '$backup_file_path'"
 					fi
-
-					log 1 "$rule_name: new backup file saved as '$backup_file_path'"
 				fi
-			fi
 
-			# Prepare next command
-			option_interval="$next_option_interval"
-			option_keep="$next_option_keep"
-			option_max_size=4294967295
-			option_max_size_ratio=10
-			option_min_size=0
-			option_min_size_ratio=0.1
-			rule_command="$next_rule_command"
-			rule_name="$next_rule_name"
-		done
-	}
+				# Prepare next command
+				option_interval="$next_option_interval"
+				option_keep="$next_option_keep"
+				option_max_size=4294967295
+				option_max_size_ratio=10
+				option_min_size=0
+				option_min_size_ratio=0.1
+				rule_command="$next_rule_command"
+				rule_name="$next_rule_name"
+			done
+		}
 done
 
 log 0 'all done'
