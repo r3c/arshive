@@ -12,4 +12,3 @@
 ^too-small-ratio: new backup file saved as '[^']*/too-small-ratio.[0-9]*'$
 ^warning: too-small-ratio: backup file '[^']*/too-small-ratio.[0-9]*' is 0.667x smaller than previous one$
 ^too-small-ratio: new backup file saved as '[^']*/too-small-ratio.[0-9]*'$
-^$
