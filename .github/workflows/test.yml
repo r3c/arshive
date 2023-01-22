@@ -8,12 +8,13 @@ on:
     branches:
       - master
   schedule:
-    - cron: '30 4 * * *'
+    - cron: "30 4 * * *"
 
 jobs:
   test:
     name: Run tests with ${{ matrix.shell }}
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         shell:
@@ -21,7 +22,8 @@ jobs:
           - bash
           - dash
           - zsh
+
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: sudo apt-get install ${{ matrix.shell }}
       - run: ${{ matrix.shell }} ./test/run.sh -s ${{ matrix.shell }}
