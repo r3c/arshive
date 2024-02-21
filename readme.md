@@ -1,6 +1,6 @@
 # Arshive backup script
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/r3c/arshive/test.yml?branch=master)](https://github.com/r3c/arshive/actions/workflows/test.yml)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/r3c/arshive/verify.yml?branch=master)](https://github.com/r3c/arshive/actions/workflows/verify.yml)
 [![license](https://img.shields.io/github/license/r3c/arshive.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
