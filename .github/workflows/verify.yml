@@ -1,4 +1,4 @@
-name: Test
+name: Verify
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    name: Run tests with ${{ matrix.shell }}
+    name: Test with ${{ matrix.shell }}
     runs-on: ubuntu-latest
 
     strategy:
