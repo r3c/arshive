@@ -18,9 +18,9 @@ jobs:
     strategy:
       matrix:
         shell:
-          - ash
           - bash
           - dash
+          - ksh
           - zsh
 
     steps:
